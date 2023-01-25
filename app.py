@@ -1,8 +1,20 @@
-import lmtk
+import openai
 
-chat = lmtk.modes.raw_gpt.RawGPTMode()
-def gpt(query):
-    return "".join(chat.ask(query))
+ENGINE = 'text-davinci-003'
+MAX_TOKENS = 1000
+TEMPERATURE = 0.0
+def complete(prompt):
+    completion = openai.Completion.create(
+        engine=ENGINE,
+        prompt=prompt,
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
+        stop=['================'],
+        stream=False,
+    )
+
+    # print(completion)
+    return completion['choices'][0]['text']
 
 class Email:
     """
@@ -15,8 +27,7 @@ class Email:
         self.body = body
 
     def __str__(self):
-        return f"""
-from: {self.from_address}
+        return f"""from: {self.from_address}
 to: {self.to_address}
 subject: {self.subject}
 body: {self.body}"""
@@ -33,11 +44,41 @@ class EmailChain:
         self.email_list.append(email)
 
     def __str__(self):
-        return "\n================\n".join(self.email_list)
+        return "\n================\n".join(map(str, self.email_list))
+
+    def generate_prompt(self):
+        return "\n================\n" + str(self) + "\n================\n" + "from:"
+
+company_instructions = {
+    'company_instructions': """Essay Inc is a company that helps people write amazing esssays. Their process is as follows:
+
+- client@foo.com -> CEO@essays.com: The CEO will get a new request from a client
+- CEO@essays.com -> researcher@essays.com: CEO sends it over to the Researcher who will research the topic, provide relevant context, and construct a proposed outline of the essay
+- researcher@essays.com -> drafter@essays.com: The Researcher will then the research and outline that over to the Drafter who will draft the essay. The Researcher makes sure to include the research and outline in her email. 
+- drafter@essays.com -> reviewer@essays.com: The Drafter will then send the drafted essay over to the Reviewer who will provide feedback. The drafter makes sure to include the drafted essay in his email.
+- reviewer@essays.com -> drafter@essays.com: The Reviewer will provide feedback *3 times* and the Drafter will improve the essay each time. These re-drafts will be significantly different and will add entire paragraphs to the essay to make it more and more complete, thorough, and interesting
+- drafter@essays.com -> editor@essays.com: The Drafter will then send the final draft over to the editor who will edit the essay
+- editor@essays.com -> CEO@essays.com: The Editor will then send the edited version back to the CEO who will make sure it is of the quality that the company is looking for
+- CEO@essays.com -> Client@essays.com: The CEO will then send the result back to the client""",
+    'specific_instructions': {
+        'researcher@essays.com': 'Researcher will always include detailed research in her email and will NEVER use attachments'
+    }
+}
+
+def generate_prompt(email_chain):
+    return f"""
+{company_instructions['company_instructions']}
+================
+{email_chain}
+================
+from"""
 
 if __name__ == "__main__":
-    test_email = Email("foo", "foo", "foo", "foo")
-    print("test_email", test_email)
+    starting_email = Email("client@foo.com", "CEO@essays.com", "Essay Request", "Please write me an essay about the American Revolution")
+    email_chain = EmailChain()
+    email_chain.append(starting_email)
 
-    print("TEST")
-    # print(gpt("TEST"))
+    prompt = generate_prompt(email_chain)
+    print(prompt)
+    completion = complete(prompt)
+    print(completion)
