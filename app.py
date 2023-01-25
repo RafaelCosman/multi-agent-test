@@ -52,6 +52,12 @@ class EmailChain:
         """
         return self.email_list[key]
 
+    def last_recipient(self):
+        return email_chain[-1].to_address
+
+    def last_sender(self):
+        return email_chain[-1].from_address
+
     def __str__(self):
         return "\n================\n".join(map(str, self.email_list))
 
@@ -63,13 +69,15 @@ company_definition = {
         'CEO@essays.com': {
             'description': "He's the boss",
             'instructions': "Your goal is to get the client a great essay. Ask clarifying questions to make sure you understand exactly what the client wants. Then send ask essaywriter@essays.com to write the essay for you. Once you have it, send it back to the client."
-        }
+        },
+        'essaywriter@essays.com': {
+            'description': "Writes essays at the direction of the CEO",
+            'instructions': "Write an excellent essay based on the instructions from the CEO."
+        },
     }
 }
 
-#     Their process is as follows:
-
-# - client@foo.com -> CEO@essays.com: The CEO will get a new request from a client
+# Stuff that I could add:
 # - CEO@essays.com -> researcher@essays.com: CEO sends it over to the Researcher who will research the topic, provide relevant context, and construct a proposed outline of the essay
 # - researcher@essays.com -> drafter@essays.com: The Researcher will then the research and outline that over to the Drafter who will draft the essay. The Researcher makes sure to include the research and outline in her email. 
 # - drafter@essays.com -> reviewer@essays.com: The Drafter will then send the drafted essay over to the Reviewer who will provide feedback. The drafter makes sure to include the drafted essay in his email.
@@ -77,40 +85,55 @@ company_definition = {
 # - drafter@essays.com -> editor@essays.com: The Drafter will then send the final draft over to the editor who will edit the essay
 # - editor@essays.com -> CEO@essays.com: The Editor will then send the edited version back to the CEO who will make sure it is of the quality that the company is looking for
 # - CEO@essays.com -> Client@essays.com: The CEO will then send the result back to the client""",
-#     'specific_instructions': {
-#         'researcher@essays.com': 'Researcher will always include detailed research in her email and will NEVER use attachments'
-#     }
-# }
 
+
+# TODO slice or summarize the email thread if its token count gets too high
 def generate_prompt(email_chain):
-    new_email_from_address = email_chain[-1].to_address
+    team = company_definition['team']
+    # TODO remove your own address from the address book
+    address_book = "\n".join([f"# {person} - {team[person]['description']}" for person in team])
     return f"""
 Company Description: {company_definition['description']}
 ================
 {email_chain}
 ================
 # Instructions:
-# You are {new_email_from_address}
-# {company_definition['team'][new_email_from_address]['instructions']}
+# You are {email_chain.last_recipient()}
+# {company_definition['team'][email_chain.last_recipient()]['instructions']}
 # Make sure to format your response as an email with a from: to: subject: and body:
+# DO NOT USE ATTACHMENTS. Instead, include all relevant text in the body of the email.
+# 
+# Here is the company directory:
+{address_book}
 
-from: {new_email_from_address}"""
+from: {email_chain.last_recipient()}"""
 
 def parse_email(from_address, text):
     [_, remainder] = text.split("\nto: ")
     [to_address, remainder] = remainder.split("\nsubject: ")
-    [subject, body] = remainder.split("\nbody: ")
+    [subject, body] = remainder.split("\nbody:")
 
     return Email(from_address, to_address, subject, body)
 
+CLIENT = "client@foo.com"
+
 if __name__ == "__main__":
-    starting_email = Email("client@foo.com", "CEO@essays.com", "Essay Request", "Please write me an essay about the American Revolution")
+    starting_email = Email(CLIENT, "CEO@essays.com", "Essay Request", "Please write me an essay about the American Revolution")
     email_chain = EmailChain()
     email_chain.append(starting_email)
 
-    prompt = generate_prompt(email_chain)
-    print("Prompt:\n", prompt)
-    completion = complete(prompt)
+    while True:
+        print("--------------------------------------")
+        if email_chain.last_recipient() == CLIENT:
+            client_input = input()
+            new_email = Email(CLIENT, email_chain.last_sender(), email_chain[-1].subject, client_input)
+        else:
+            # If the latest email is addressed to anyone OTHER than the client...
+            prompt = generate_prompt(email_chain)
+            print("Prompt:\n", prompt)
+            completion = complete(prompt)
 
-    print("Completion:\n", completion)
-    print(parse_email("CEO@essays.com", completion))
+            print("Completion:\n", completion)
+            new_email = parse_email(email_chain.last_recipient(), completion)
+
+        email_chain.append(new_email)
