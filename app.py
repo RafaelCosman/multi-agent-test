@@ -60,25 +60,36 @@ class EmailChain:
         return email_chain[-1].from_address
 
     def __str__(self):
-        return "\n================\n".join(map(str, self.email_list))
+        string = ""
+        for index, email in enumerate(self.email_list):
+            string += f"""
+================
+Email {index+1}/8
+Date: Jan {index+5} 2023
+{email}"""
+
+        return string
 
 company_definition = {
     'description': "Essays Inc. is a company that helps people write amazing essays",
     'team': {
-        'CEO@essays.com': {
-            'description': "He's the boss",
+        'sales@essays.com': {
+            'description': "Sales",
             'instructions': "Your goal is to get the client a great essay. Ask clarifying questions to make sure you understand exactly what the client wants. Then send ask essaywriter@essays.com to write the essay for you. Once you have the essay, send the essay back to the client."
         },
         'essaywriter@essays.com': {
-            'description': "Writes essays at the direction of the CEO",
-            'instructions': "Write an excellent essay based on the instructions from the CEO. Make sure you follow his instructions exactly. Also, once you write an essay, send it over to editor@essays.com for editing before you send it to the CEO."
+            'description': "Essay Writer",
+            'instructions': "Write an excellent essay based on the instructions from the client. Also, once you write an essay, send it over to editor@essays.com for editing before getting it back to the client."
         },
         'editor@essays.com': {
-            'description': "Edits essays",
+            'description': "Essay Editor",
             'instructions': "Edit essays that you are sent for grammer, clarity, and consistency."
         }
     }
 }
+
+# Could label emails out of 10
+# 
 
 # Stuff that I could add:
 # - CEO@essays.com -> researcher@essays.com: CEO sends it over to the Researcher who will research the topic, provide relevant context, and construct a proposed outline of the essay
@@ -105,7 +116,6 @@ Company Description: {company_definition['description']}
 # {company_definition['team'][email_chain.last_recipient()]['instructions']}
 # Make sure to format your response as an email with a from: to: subject: and body:
 # For security reasons, do not use attachments. Instead, include all relevant text in the body of the email.
-# Never tell someone that they need to wait, always work on and complete stuff ASAP and then send it back.
 # 
 # Here is the company directory:
 {address_book}
@@ -122,15 +132,15 @@ def parse_email(from_address, text):
 CLIENT = "client@foo.com"
 
 if __name__ == "__main__":
-    starting_email = Email(CLIENT, "CEO@essays.com", "Essay Request", input("What email would you like to send to the CEO?"))
+    starting_email = Email(CLIENT, input("to: "), input("subject: "), input("body: "))
     email_chain = EmailChain()
     email_chain.append(starting_email)
 
     while True:
         print("--------------------------------------")
         if email_chain.last_recipient() == CLIENT:
-            client_input = input()
-            new_email = Email(CLIENT, email_chain.last_sender(), email_chain[-1].subject, client_input)
+            print(f"to: {email_chain.last_sender()}, subject: {email_chain[-1].subject}")
+            new_email = Email(CLIENT, email_chain.last_sender(), email_chain[-1].subject, input("body: "))
         else:
             # If the latest email is addressed to anyone OTHER than the client...
             prompt = generate_prompt(email_chain)
