@@ -65,7 +65,6 @@ class EmailChain:
             string += f"""
 ================
 Email {index+1}/8
-Date: Jan {index+5} 2023
 {email}"""
 
         return string
