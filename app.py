@@ -72,8 +72,12 @@ company_definition = {
         },
         'essaywriter@essays.com': {
             'description': "Writes essays at the direction of the CEO",
-            'instructions': "Write an excellent essay based on the instructions from the CEO."
+            'instructions': "Write an excellent essay based on the instructions from the CEO. Make sure you follow his instructions exactly. Also, once you write an essay, send it over to editor@essays.com for editing before you send it to the CEO."
         },
+        'editor@essays.com': {
+            'description': "Edits essays",
+            'instructions': "Edit essays that you are sent for grammer, clarity, and consistency."
+        }
     }
 }
 
